@@ -421,8 +421,9 @@ vec3 getColor(vec2 pos) {
     vec3 background1 = hsl2rgb(lightHue1, lightSaturation, lightLightness * (dot(posCenter, -lightVec1) / gradationScale * cellSize + 0.5f));
     vec3 background2 = hsl2rgb(lightHue2, lightSaturation, lightLightness * (dot(posCenter, -lightVec2) / gradationScale * cellSize + 0.5f));
     //// vec3 background = background1 + background2;
-    vec3 background = max(background1, background2);
-    // vec3 background = background1;
+    //vec3 background = max(background1, background2);
+    vec3 background = hsl2rgb(214./365., 0.9, 0.8);
+    //vec3 background = background1;
     //vec3 background = vec3(0.5, 0.5, 0.5);
 
     if(a > 0.5f) {
@@ -459,16 +460,25 @@ void main(void){
 <script>
     // Parameters
     // Animation
-    const cellSize = 2;
-    const subIteration = 100;
+    const cellSize = 3;
+    const subIteration = 20;
     // Color
+    // const lightAngle = 0;
+    // const lightIntensity = 4.0;
+    // const shadow = 1.0;
+    // const lightHue1 = 0.17;
+    // const lightHue2 = 0.72;
+    // const lightSaturation = 0.8;
+    // const lightLightness = 0.7;
+    // const gradationScale = 2048;
     const lightAngle = 0;
-    const lightIntensity = 4.0;
-    const shadow = 1.0;
+    //const lightIntensity = 0.4425;
+    const lightIntensity = 0.6;
+    const shadow = 0.4602;
     const lightHue1 = 0.17;
     const lightHue2 = 0.72;
-    const lightSaturation = 0.8;
-    const lightLightness = 0.7;
+    const lightSaturation = 0;
+    const lightLightness = 1;
     const gradationScale = 2048;
     // Crystal
     const rho = 0.46;
