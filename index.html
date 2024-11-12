@@ -36,7 +36,8 @@ uniform float rho;
 out vec4 outColor;
 void main(void){
     ivec2 pos = ivec2(gl_FragCoord.xy);
-    if (pos.y == 0 && pos.x % 16 == 0) {
+    //if (pos.y == 0 || (pos.y == 1 && pos.x % 256 == 0)) {
+    if (pos.y == 0 && pos.x % 256 == 0) {
         outColor = vec4(1.0, 0.0, 1.0, 0.0); // Crystal nucleus
     } else {
         outColor = vec4(0.0, 0.0, 0.0, rho);
@@ -48,12 +49,19 @@ void main(void){
 precision highp float;
 
 // Parameters
+uniform ivec2 texSize;
 uniform float rho;
 
 uniform sampler2D computeTex; // Input
 out vec4 outColor; // Output
 
 vec4 getValue(sampler2D texture, ivec2 pos) {
+    if (pos.x < 0) {
+        pos.x += texSize.x;
+    }
+    if (pos.x >= texSize.x) {
+        pos.x -= texSize.x;
+    }
     return texelFetch(texture, pos, 0);
 }
 
@@ -84,12 +92,19 @@ void main() {
 precision highp float;
 
 // Parameters
+uniform ivec2 texSize;
 uniform float kappa;
 
 uniform sampler2D computeTex; // Input
 out vec4 outColor; // Output
 
 vec4 getValue(sampler2D texture, ivec2 pos) {
+    if (pos.x < 0) {
+        pos.x += texSize.x;
+    }
+    if (pos.x >= texSize.x) {
+        pos.x -= texSize.x;
+    }
     return texelFetch(texture, pos, 0);
 }
 
@@ -125,6 +140,7 @@ void main() {
 precision highp float;
 
 // Parameters
+uniform ivec2 texSize;
 uniform float beta;
 uniform float alpha;
 uniform float theta;
@@ -133,6 +149,12 @@ uniform sampler2D computeTex; // Input
 out vec4 outColor; // output
 
 vec4 getValue(sampler2D texture, ivec2 pos) {
+    if (pos.x < 0) {
+        pos.x += texSize.x;
+    }
+    if (pos.x >= texSize.x) {
+        pos.x -= texSize.x;
+    }
     return texelFetch(texture, pos, 0);
 }
 
@@ -201,6 +223,7 @@ void main() {
 precision highp float;
 
 // Parameters
+uniform ivec2 texSize;
 uniform float mu;
 uniform float gamma;
 uniform float sigma;
@@ -239,6 +262,12 @@ float noise(vec3 p) {
 }
 
 vec4 getValue(sampler2D texture, ivec2 pos) {
+    if (pos.x < 0) {
+        pos.x += texSize.x;
+    }
+    if (pos.x >= texSize.x) {
+        pos.x -= texSize.x;
+    }
     return texelFetch(texture, pos, 0);
 }
 
@@ -329,7 +358,7 @@ void main(void){
     const kappa = 0.003;
     const mu = 0.07;
     const gamma = 0.00005;
-    const sigma = 0.002;
+    const sigma = 0.001;
     // const rho = 0.635;
     // const beta = 1.6;
     // const alpha = 0.4;
@@ -469,22 +498,26 @@ void main(void){
     // Create programs
     const computeProgram0 = createProgram(gl, ['vs', 'fs0']);
     const computeProgLocs0 = {
+        texSize: gl.getUniformLocation(computeProgram0, 'texSize'),
         rho: gl.getUniformLocation(computeProgram0, 'rho'),
     }
 
     const computeProgram1 = createProgram(gl, ['vs', 'fs1']);
     const computeProgLocs1 = {
+        texSize: gl.getUniformLocation(computeProgram1, 'texSize'),
         computeTex: gl.getUniformLocation(computeProgram1, 'computeTex'),
     }
 
     const computeProgram2 = createProgram(gl, ['vs', 'fs2']);
     const computeProgLocs2 = {
+        texSize: gl.getUniformLocation(computeProgram2, 'texSize'),
         computeTex: gl.getUniformLocation(computeProgram2, 'computeTex'),
         kappa: gl.getUniformLocation(computeProgram2, 'kappa'),
     }
 
     const computeProgram3 = createProgram(gl, ['vs', 'fs3']);
     const computeProgLocs3 = {
+        texSize: gl.getUniformLocation(computeProgram3, 'texSize'),
         computeTex: gl.getUniformLocation(computeProgram3, 'computeTex'),
         beta: gl.getUniformLocation(computeProgram3, 'beta'),
         alpha: gl.getUniformLocation(computeProgram3, 'alpha'),
@@ -493,6 +526,7 @@ void main(void){
 
     const computeProgram4 = createProgram(gl, ['vs', 'fs4']);
     const computeProgLocs4 = {
+        texSize: gl.getUniformLocation(computeProgram4, 'texSize'),
         time: gl.getUniformLocation(computeProgram4, 'time'),
         computeTex: gl.getUniformLocation(computeProgram4, 'computeTex'),
         mu: gl.getUniformLocation(computeProgram4, 'mu'),
@@ -546,6 +580,7 @@ void main(void){
     {
         gl.useProgram(computeProgram0);
         gl.bindVertexArray(computeVA0);
+        gl.uniform2i(computeProgLocs0.texSize, texWidth, texHeight);
         gl.uniform1f(computeProgLocs0.rho, rho);
         gl.bindFramebuffer(gl.FRAMEBUFFER, fb1); // Output
         gl.viewport(0, 0, texWidth, texHeight);
@@ -560,6 +595,7 @@ void main(void){
             {
                 gl.useProgram(computeProgram1);
                 gl.bindVertexArray(computeVA1);
+                gl.uniform2i(computeProgLocs1.texSize, texWidth, texHeight);
                 gl.uniform1i(computeProgLocs1.computeTex, 0);
                 gl.bindTexture(gl.TEXTURE_2D, computeTex1); // Input
                 gl.bindFramebuffer(gl.FRAMEBUFFER, fb2); // Output
@@ -571,6 +607,7 @@ void main(void){
             {
                 gl.useProgram(computeProgram2);
                 gl.bindVertexArray(computeVA2);
+                gl.uniform2i(computeProgLocs2.texSize, texWidth, texHeight);
                 gl.uniform1i(computeProgLocs2.computeTex, 0);
                 gl.uniform1f(computeProgLocs2.kappa, kappa);
                 gl.bindTexture(gl.TEXTURE_2D, computeTex2); // Input
@@ -583,6 +620,7 @@ void main(void){
             {
                 gl.useProgram(computeProgram3);
                 gl.bindVertexArray(computeVA3);
+                gl.uniform2i(computeProgLocs3.texSize, texWidth, texHeight);
                 gl.uniform1i(computeProgLocs3.computeTex, 0);
                 gl.uniform1f(computeProgLocs3.beta, beta);
                 gl.uniform1f(computeProgLocs3.alpha, alpha);
@@ -597,6 +635,7 @@ void main(void){
             {
                 gl.useProgram(computeProgram4);
                 gl.bindVertexArray(computeVA4);
+                gl.uniform2i(computeProgLocs4.texSize, texWidth, texHeight);
                 gl.uniform1f(computeProgLocs4.time, frameCounter);
                 gl.uniform1i(computeProgLocs4.computeTex, 0);
                 gl.uniform1f(computeProgLocs4.mu, mu);
