@@ -41,13 +41,7 @@ out vec4 outColor; // Output
 
 void main(void){
     ivec2 pos = ivec2(gl_FragCoord.xy);
-    //if (pos.y == 0 || (pos.y == 1 && pos.x % 256 == 0)) {
-    //if (pos.y == 0 && pos.x % 256 == 0) {
-    if (pos.x == texSize.x / 2 && pos.y == texSize.y / 2) {
-        outColor = vec4(1.0, 0.0, 1.0, 0.0); // Crystal nucleus
-    } else {
-        outColor = vec4(0.0, 0.0, 0.0, rho);
-    }
+    outColor = vec4(0.0, 0.0, 0.0, rho);
 }
 </script>
 
@@ -231,6 +225,7 @@ precision highp float;
 // Parameters
 uniform ivec2 texSize;
 uniform ivec2 canvasSize;
+uniform vec2 logoSize;
 uniform float cellSize;
 uniform vec2 mousePos;
 uniform float rho;
@@ -240,6 +235,7 @@ uniform float sigma;
 uniform float time;
 
 uniform sampler2D computeTex; // Input
+uniform sampler2D logoTex; // Input
 out vec4 outColor; // Output
 
 vec4 mod289(vec4 x) {
@@ -325,8 +321,17 @@ void main() {
     if (canvasPos.x > float(canvasSize.x)) {
         canvasPos.x -= float(canvasSize.x);
     }
-    if(distance(canvasPos, mousePos) < 50.) {
+    if(distance(canvasPos, mousePos) < 100.) {
         next = vec4(0.0, 0.0, 0.0, rho);
+    }
+
+    // Logo
+    vec2 logoPos = canvasPos - vec2(canvasSize) * 0.5 + logoSize * 0.5;
+    if (0. < logoPos.x && logoPos.x < logoSize.x && 0. < logoPos.y &&  logoPos.y < logoSize.y) {
+        vec4 logo = texture(logoTex, logoPos / logoSize);
+        if (logo.w > 0.) {
+            next = vec4(1.0, 0.0, 1.0, 0.0);
+        }
     }
 
     outColor = next;
@@ -485,8 +490,9 @@ void main(void){
 <script>
     // Parameters
     // Animation
-    const cellSize = 2;
+    const cellSize = 1.5;
     const subIteration = 20;
+    const logoScale = 2;
     // Color
     // const lightAngle = 0;
     // const lightIntensity = 4.0;
@@ -546,8 +552,8 @@ void main(void){
     const gl = canvas.getContext('webgl2');
 
     // Mouse position
-    let mouseX = 400;
-    let mouseY = 400;
+    let mouseX = -10000;
+    let mouseY = -10000;
     canvas.addEventListener('mousemove', event => {
         const bb = canvas.getBoundingClientRect();
         const x = event.clientX - bb.left;
@@ -694,10 +700,12 @@ void main(void){
     const computeProgLocs4 = {
         texSize: gl.getUniformLocation(computeProgram4, 'texSize'),
         canvasSize: gl.getUniformLocation(computeProgram4, 'canvasSize'),
+        logoSize: gl.getUniformLocation(computeProgram4, 'logoSize'),
         cellSize: gl.getUniformLocation(computeProgram4, 'cellSize'),
         mousePos: gl.getUniformLocation(computeProgram4, 'mousePos'),
         time: gl.getUniformLocation(computeProgram4, 'time'),
         computeTex: gl.getUniformLocation(computeProgram4, 'computeTex'),
+        logoTex: gl.getUniformLocation(computeProgram4, 'logoTex'),
         rho: gl.getUniformLocation(computeProgram4, 'rho'),
         mu: gl.getUniformLocation(computeProgram4, 'mu'),
         gamma: gl.getUniformLocation(computeProgram4, 'gamma'),
@@ -732,6 +740,26 @@ void main(void){
     const computeTex2 = createTexture(gl);
     const computeTex3 = createTexture(gl);
     const computeTex4 = createTexture(gl);
+
+    // Create a texture.
+    const logoTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, logoTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+        new Uint8Array([0, 0, 0, 0]));
+    // Asynchronously load an image
+    const image = new Image();
+    image.src = "logo.png";
+    let logoWidth = 1;
+    let logoHeight = 1;
+    image.addEventListener('load', function () {
+        // Now that the image has loaded make copy it to the texture.
+        logoWidth = image.width * logoScale;
+        logoHeight = image.height * logoScale;
+        console.log(logoWidth, logoHeight)
+        gl.bindTexture(gl.TEXTURE_2D, logoTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.generateMipmap(gl.TEXTURE_2D);
+    });
 
     // Create frame buffers
     const fb1 = createFrameBuffer(gl, computeTex1);
@@ -801,15 +829,23 @@ void main(void){
                 gl.bindVertexArray(computeVA4);
                 gl.uniform2i(computeProgLocs4.texSize, texWidth, texHeight);
                 gl.uniform2i(computeProgLocs4.canvasSize, width, height);
+                gl.uniform2f(computeProgLocs4.logoSize, logoWidth, logoHeight);
                 gl.uniform1f(computeProgLocs4.cellSize, cellSize);
                 gl.uniform2f(computeProgLocs4.mousePos, mouseX, mouseY);
                 gl.uniform1f(computeProgLocs4.time, frameCounter);
                 gl.uniform1i(computeProgLocs4.computeTex, 0);
+                gl.uniform1i(computeProgLocs4.logoTex, 1);
                 gl.uniform1f(computeProgLocs4.rho, rho);
                 gl.uniform1f(computeProgLocs4.mu, mu);
                 gl.uniform1f(computeProgLocs4.gamma, gamma);
                 gl.uniform1f(computeProgLocs4.sigma, sigma);
+
+                gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, computeTex4); // Input
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, logoTex); // Input
+                gl.activeTexture(gl.TEXTURE0); // reset
+
                 gl.bindFramebuffer(gl.FRAMEBUFFER, fb1); // Output
                 gl.viewport(0, 0, texWidth, texHeight);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
