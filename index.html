@@ -329,7 +329,7 @@ void main() {
     vec2 logoPos = canvasPos - vec2(canvasSize) * 0.5 + logoSize * 0.5;
     if (0. < logoPos.x && logoPos.x < logoSize.x && 0. < logoPos.y &&  logoPos.y < logoSize.y) {
         vec4 logo = texture(logoTex, logoPos / logoSize);
-        if (logo.w > 0.) {
+        if (logo.w > 0.1) {
             next = vec4(1.0, 0.0, 1.0, 0.0);
         }
     }
@@ -512,22 +512,22 @@ void main(void){
     const lightLightness = 1;
     const gradationScale = 2048;
     // Crystal
-    const rho = 0.46;
-    const beta = 1.3;
-    const alpha = 0.08;
-    const theta = 0.025;
-    const kappa = 0.003;
-    const mu = 0.07;
-    const gamma = 0.00005;
-    const sigma = 0.001;
-    // const rho = 0.635;
-    // const beta = 1.6;
-    // const alpha = 0.4;
+    // const rho = 0.46;
+    // const beta = 1.3;
+    // const alpha = 0.08;
     // const theta = 0.025;
-    // const kappa = 0.005;
-    // const mu = 0.015;
-    // const gamma = 0.0005;
-    // const sigma = 0.01;
+    // const kappa = 0.003;
+    // const mu = 0.07;
+    // const gamma = 0.00005;
+    // const sigma = 0.001;
+    const rho = 0.635;
+    const beta = 1.6;
+    const alpha = 0.4;
+    const theta = 0.025;
+    const kappa = 0.005;
+    const mu = 0.015;
+    const gamma = 0.0005;
+    const sigma = 0.01;
 
     // Window size
     let width = 0;
