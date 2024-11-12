@@ -300,7 +300,8 @@ void main(void){
 <script>
     // Parameters
     // Canvas
-    const cellSize = 1;
+    const cellSize = 4;
+    const subIteration = 10;
     // Crystal
     const rho = 0.46;
     const beta = 1.3;
@@ -309,7 +310,7 @@ void main(void){
     const kappa = 0.003;
     const mu = 0.07;
     const gamma = 0.00005;
-    const sigma = 0.01;
+    const sigma = 0.002;
 
     // Window size
     let width = 0;
@@ -524,7 +525,8 @@ void main(void){
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    for (let i = 0; i < 1000; i++) {
+    const frame = () => {
+        for(let i=0;i<subIteration;i++){
         // Step 1
         {
             gl.useProgram(computeProgram1);
@@ -576,22 +578,26 @@ void main(void){
             gl.viewport(0, 0, texWidth, texHeight);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
+        }
+
+        // Draw
+        {
+            gl.useProgram(drawProgram);
+
+            gl.uniform1i(drawProgLocs.computeTex, 0);
+            gl.uniform1f(drawProgLocs.cellSize, cellSize);
+
+            gl.bindTexture(gl.TEXTURE_2D, computeTex1); // Input
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null); // Output (canvas)
+            gl.bindVertexArray(drawVA);
+
+            gl.viewport(0, 0, width, height);
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+        window.requestAnimationFrame(frame);
     }
 
-    // Draw
-    {
-        gl.useProgram(drawProgram);
-
-        gl.uniform1i(drawProgLocs.computeTex, 0);
-        gl.uniform1f(drawProgLocs.cellSize, cellSize);
-
-        gl.bindTexture(gl.TEXTURE_2D, computeTex1); // Input
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null); // Output (canvas)
-        gl.bindVertexArray(drawVA);
-
-        gl.viewport(0, 0, width, height);
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
+    window.requestAnimationFrame(frame);
 </script>
