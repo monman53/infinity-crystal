@@ -315,9 +315,62 @@ precision highp float;
 // Parameters
 uniform vec2 texSize;
 uniform float cellSize;
+uniform float lightAngle;
+uniform float lightIntensity;
+uniform float shadow;
+uniform float lightHue1;
+uniform float lightHue2;
+uniform float lightSaturation;
+uniform float lightLightness;
+uniform float gradationScale;
 
 uniform sampler2D computeTex; // Input
 out vec4 outColor; //Output
+
+#define M_PI 3.1415926535897932384626433832795
+
+float hue2rgb(float f1, float f2, float hue) {
+    if(hue < 0.0f)
+        hue += 1.0f;
+    else if(hue > 1.0f)
+        hue -= 1.0f;
+    float res;
+    if((6.0f * hue) < 1.0f)
+        res = f1 + (f2 - f1) * 6.0f * hue;
+    else if((2.0f * hue) < 1.0f)
+        res = f2;
+    else if((3.0f * hue) < 2.0f)
+        res = f1 + (f2 - f1) * ((2.0f / 3.0f) - hue) * 6.0f;
+    else
+        res = f1;
+    return res;
+}
+
+vec3 hsl2rgb(vec3 hsl) {
+    vec3 rgb;
+
+    if(hsl.y == 0.0f) {
+        rgb = vec3(hsl.z); // Luminance
+    } else {
+        float f2;
+
+        if(hsl.z < 0.5f)
+            f2 = hsl.z * (1.0f + hsl.y);
+        else
+            f2 = hsl.z + hsl.y - hsl.y * hsl.z;
+
+        float f1 = 2.0f * hsl.z - f2;
+
+        rgb.r = hue2rgb(f1, f2, hsl.x + (1.0f / 3.0f));
+        rgb.g = hue2rgb(f1, f2, hsl.x);
+        rgb.b = hue2rgb(f1, f2, hsl.x - (1.0f / 3.0f));
+    }
+    return rgb;
+}
+
+vec3 hsl2rgb(float h, float s, float l) {
+    return hsl2rgb(vec3(h, s, l));
+}
 
 vec4 getValue(vec2 fragCoord) {
     vec2 fragPos = fragCoord;
@@ -333,23 +386,90 @@ vec4 getValue(vec2 fragCoord) {
     return value;
 }
 
+vec3 getColor(vec2 pos) {
+    vec4 value = getValue(pos);
+    vec4 gradX, gradY;
+    float coef2 = 0.2f;
+    // x
+    {
+        vec4 v1 = getValue(vec2(pos.x - 2.0f, pos.y));
+        vec4 v2 = getValue(vec2(pos.x - 1.0f, pos.y));
+        vec4 v3 = getValue(vec2(pos.x + 1.0f, pos.y));
+        vec4 v4 = getValue(vec2(pos.x + 2.0f, pos.y));
+        gradX = -coef2 * v1 - v2 + v3 + coef2 * v4;
+    }
+    // y
+    {
+        vec4 v1 = getValue(vec2(pos.x, pos.y - 2.0f));
+        vec4 v2 = getValue(vec2(pos.x, pos.y - 1.0f));
+        vec4 v3 = getValue(vec2(pos.x, pos.y + 1.0f));
+        vec4 v4 = getValue(vec2(pos.x, pos.y + 2.0f));
+        gradY = -coef2 * v1 - v2 + v3 + coef2 * v4;
+    }
+    vec2 gradC = vec2(gradX.z, gradY.z);
+
+    float a = value.x;
+    // float c = value.z;
+    // float d = value.w;
+    float angle1 = lightAngle * 2.f * M_PI;
+    float angle2 = (lightAngle + 1.0f / 6.0f) * 2.f * M_PI;
+
+    vec2 lightVec1 = vec2(cos(angle1), sin(angle1));
+    vec2 lightVec2 = vec2(cos(angle2), sin(angle2));
+    //vec2 posCenter = vec2(texSize) * 0.5;
+    vec2 posCenter = pos - vec2(texSize / 2.0);
+    vec3 background1 = hsl2rgb(lightHue1, lightSaturation, lightLightness * (dot(posCenter, -lightVec1) / gradationScale * cellSize + 0.5f));
+    vec3 background2 = hsl2rgb(lightHue2, lightSaturation, lightLightness * (dot(posCenter, -lightVec2) / gradationScale * cellSize + 0.5f));
+    //// vec3 background = background1 + background2;
+    vec3 background = max(background1, background2);
+    // vec3 background = background1;
+    //vec3 background = vec3(0.5, 0.5, 0.5);
+
+    if(a > 0.5f) {
+    // if(true) {
+
+        vec3 lightColor1 = hsl2rgb(lightHue1, lightSaturation, lightLightness);
+        vec3 lightColor2 = hsl2rgb(lightHue2, lightSaturation, lightLightness);
+
+        float light1 = max(dot(gradC, lightVec1), 0.f);
+        float light2 = max(dot(gradC, lightVec2), 0.f);
+
+        vec3 colorLight1 = lightColor1 * light1;
+        vec3 colorLight2 = lightColor2 * light2;
+        // vec3 colorLight = lightIntensity * (colorLight1 + colorLight2);
+        vec3 colorLight = lightIntensity * max(colorLight1, colorLight2);
+
+        float shadowness = length(gradC) * shadow;
+
+        return vec3(background - shadowness + colorLight);
+        // outColor = vec4(vec3(c), alpha);
+    } else {
+        return vec3(background);
+        // outColor = vec4(vec3(d), alpha);
+    }
+}
+
 void main(void){
     vec2 pos = gl_FragCoord.xy / cellSize;
-    vec4 data = getValue(pos);
-    if (data.x > 0.5) {
-        outColor = vec4(1.0, 1.0, 1.0, 1.0); // Crystal
-    } else {
-        outColor = vec4(0.0, 0.0, 0.0, 1.0); // None
-    }
+    outColor = vec4(getColor(pos), 1.0);
 }
 </script>
 
 <!-- Main script -->
 <script>
     // Parameters
-    // Canvas
+    // Animation
     const cellSize = 2;
     const subIteration = 100;
+    // Color
+    const lightAngle = 0;
+    const lightIntensity = 4.0;
+    const shadow = 1.0;
+    const lightHue1 = 0.17;
+    const lightHue2 = 0.72;
+    const lightSaturation = 0.8;
+    const lightLightness = 0.7;
+    const gradationScale = 2048;
     // Crystal
     const rho = 0.46;
     const beta = 1.3;
@@ -537,22 +657,16 @@ void main(void){
     const drawProgram = createProgram(gl, ['vs', 'fs']);
     const drawProgLocs = {
         texSize: gl.getUniformLocation(drawProgram, 'texSize'),
-        // computeRadius: gl.getUniformLocation(drawProgram, 'computeRadius'),
         computeTex: gl.getUniformLocation(drawProgram, 'computeTex'),
         cellSize: gl.getUniformLocation(drawProgram, 'cellSize'),
-        // rot: gl.getUniformLocation(drawProgram, 'rot'),
-        // lightAngle: gl.getUniformLocation(drawProgram, 'lightAngle'),
-        // lightIntensity: gl.getUniformLocation(drawProgram, 'lightIntensity'),
-        // hue: gl.getUniformLocation(drawProgram, 'hue'),
-        // saturation: gl.getUniformLocation(drawProgram, 'saturation'),
-        // lightness: gl.getUniformLocation(drawProgram, 'lightness'),
-        // shadow: gl.getUniformLocation(drawProgram, 'shadow'),
-        // lightHue1: gl.getUniformLocation(drawProgram, 'lightHue1'),
-        // lightHue2: gl.getUniformLocation(drawProgram, 'lightHue2'),
-        // lightSaturation: gl.getUniformLocation(drawProgram, 'lightSaturation'),
-        // lightLightness: gl.getUniformLocation(drawProgram, 'lightLightness'),
-        // gradationScale: gl.getUniformLocation(drawProgram, 'gradationScale'),
-        // chromaticAberration: gl.getUniformLocation(drawProgram, 'chromaticAberration')
+        lightAngle: gl.getUniformLocation(drawProgram, 'lightAngle'),
+        lightIntensity: gl.getUniformLocation(drawProgram, 'lightIntensity'),
+        shadow: gl.getUniformLocation(drawProgram, 'shadow'),
+        lightHue1: gl.getUniformLocation(drawProgram, 'lightHue1'),
+        lightHue2: gl.getUniformLocation(drawProgram, 'lightHue2'),
+        lightSaturation: gl.getUniformLocation(drawProgram, 'lightSaturation'),
+        lightLightness: gl.getUniformLocation(drawProgram, 'lightLightness'),
+        gradationScale: gl.getUniformLocation(drawProgram, 'gradationScale'),
     }
 
     // Create vertex arrays
@@ -657,6 +771,14 @@ void main(void){
             gl.uniform1i(drawProgLocs.computeTex, 0);
             gl.uniform1f(drawProgLocs.cellSize, cellSize);
             gl.uniform2f(drawProgLocs.texSize, texWidth, texHeight);
+            gl.uniform1f(drawProgLocs.lightAngle, lightAngle)
+            gl.uniform1f(drawProgLocs.lightIntensity, lightIntensity)
+            gl.uniform1f(drawProgLocs.shadow, shadow)
+            gl.uniform1f(drawProgLocs.lightHue1, lightHue1)
+            gl.uniform1f(drawProgLocs.lightHue2, lightHue2)
+            gl.uniform1f(drawProgLocs.lightSaturation, lightSaturation)
+            gl.uniform1f(drawProgLocs.lightLightness, lightLightness)
+            gl.uniform1f(drawProgLocs.gradationScale, gradationScale)
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, null); // Output (canvas)
             gl.bindVertexArray(drawVA);
