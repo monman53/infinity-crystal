@@ -66,7 +66,7 @@ void main() {
     if(current.x < 0.5f) {
         float d = current.w;
         for(int i = 0; i < 6; i++) {
-            ivec2 nextPos = pos + nei[i % 6];
+            ivec2 nextPos = pos + nei[i];
             vec4 value = getValue(computeTex, nextPos);
             if(value.x > 0.5f) {
                 d += current.w;
@@ -115,6 +115,82 @@ void main() {
             next.y = current.y + (1.f - kappa) * current.w;
             next.z = current.z + kappa * current.w;
             next.w = 0.f;
+        }
+    }
+    outColor = next;
+}
+</script>
+
+<script id="fs3" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+
+// Parameters
+uniform float beta;
+uniform float alpha;
+uniform float theta;
+
+uniform sampler2D computeTex; // Input
+out vec4 outColor; // output
+
+vec4 getValue(sampler2D texture, ivec2 pos) {
+    return texelFetch(texture, pos, 0);
+}
+
+ivec2 nei[6] = ivec2[](ivec2(1, 0), ivec2(0, 1), ivec2(-1, 1), ivec2(-1, 0), ivec2(0, -1), ivec2(1, -1));
+
+int countA(sampler2D texture, ivec2 pos) {
+    int count = 0;
+
+    if(getValue(texture, pos).x > 0.5f) {
+        count++;
+    }
+
+    for(int i = 0; i < 6; i++) {
+        if(getValue(texture, pos + nei[i]).x > 0.5f) {
+            count++;
+        }
+    }
+    return count;
+}
+
+vec4 sum(sampler2D texture, ivec2 pos) {
+    vec4 sum = getValue(texture, pos);
+    for(int i = 0; i < 6; i++) {
+        ivec2 nextPos = pos + nei[i];
+        sum += getValue(texture, nextPos);
+    }
+    return sum;
+}
+
+void main() {
+    ivec2 pos = ivec2(gl_FragCoord.xy);
+    vec4 current = texelFetch(computeTex, pos, 0);
+    vec4 next = current;
+    if(current.x < 0.5f) {
+        int na = countA(computeTex, pos);
+        if(na > 0) {
+            if(na == 1 || na == 2) {
+                if(current.y >= beta) {
+                    next.x = 1.0f;
+                }
+            }
+            if(na == 3) {
+                if(current.y >= 1.f) {
+                    next.x = 1.0f;
+                }
+                vec4 s = sum(computeTex, pos);
+                if(s.w < theta && current.y >= alpha) {
+                    next.x = 1.0f;
+                }
+            }
+            if(na >= 4) {
+                next.x = 1.0f;
+            }
+
+            if(next.x > 0.5f) {
+                next.z = current.y + current.z;
+                next.y = 0.0f;
+            }
         }
     }
     outColor = next;
@@ -297,6 +373,14 @@ void main(void){
         kappa: gl.getUniformLocation(computeProgram2, 'kappa'),
     }
 
+    const computeProgram3 = createProgram(gl, ['vs', 'fs3']);
+    const computeProgLocs3 = {
+        computeTex: gl.getUniformLocation(computeProgram3, 'computeTex'),
+        beta: gl.getUniformLocation(computeProgram3, 'beta'),
+        alpha: gl.getUniformLocation(computeProgram3, 'alpha'),
+        theta: gl.getUniformLocation(computeProgram3, 'theta'),
+    }
+
     const drawProgram = createProgram(gl, ['vs', 'fs']);
     const drawProgLocs = {
         // canvasSize: gl.getUniformLocation(drawProgram, 'canvasSize'),
@@ -322,7 +406,7 @@ void main(void){
     const computeVA0 = createDummyClipVA(gl, computeProgram0);
     const computeVA1 = createDummyClipVA(gl, computeProgram1);
     const computeVA2 = createDummyClipVA(gl, computeProgram2);
-    // const computeVA3 = createDummyClipVA(gl, computeProgram3);
+    const computeVA3 = createDummyClipVA(gl, computeProgram3);
     const drawVA = createDummyClipVA(gl, drawProgram);
 
     // Create textures
@@ -371,6 +455,20 @@ void main(void){
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
+    // Step 3
+    {
+        gl.useProgram(computeProgram3);
+        gl.bindVertexArray(computeVA3);
+        gl.uniform1i(computeProgLocs3.computeTex, 0);
+        gl.uniform1f(computeProgLocs3.beta, beta);
+        gl.uniform1f(computeProgLocs3.alpha, alpha);
+        gl.uniform1f(computeProgLocs3.theta, theta);
+        gl.bindTexture(gl.TEXTURE_2D, computeTex3); // Input
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fb4); // Output
+        gl.viewport(0, 0, texWidth, texHeight);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
     // Draw
     {
         gl.useProgram(drawProgram);
@@ -378,7 +476,7 @@ void main(void){
         gl.uniform1i(drawProgLocs.computeTex, 0);
         gl.uniform1f(drawProgLocs.cellSize, cellSize);
 
-        gl.bindTexture(gl.TEXTURE_2D, computeTex3); // Input
+        gl.bindTexture(gl.TEXTURE_2D, computeTex4); // Input
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); // Output (canvas)
         gl.bindVertexArray(drawVA);
 
