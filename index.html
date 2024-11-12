@@ -317,7 +317,7 @@ void main() {
     // Mouse interaction
     vec2 canvasPos;
     canvasPos.y = float(pos.y) * sqrt(3.0f) / 2.0;
-    canvasPos.x = float(pos.x) + canvasPos.y * 0.5;
+    canvasPos.x = float(pos.x) + float(pos.y) * 0.5;
     canvasPos *= cellSize;
     if (canvasPos.x < 0.) {
         canvasPos.x += float(canvasSize.x);
@@ -325,8 +325,7 @@ void main() {
     if (canvasPos.x > float(canvasSize.x)) {
         canvasPos.x -= float(canvasSize.x);
     }
-    if(distance(canvasPos, mousePos) < 100.) {
-    //if(distance(canvasPos, vec2(100., 100.)) < 100.) {
+    if(distance(canvasPos, mousePos) < 50.) {
         next = vec4(0.0, 0.0, 0.0, rho);
     }
 
