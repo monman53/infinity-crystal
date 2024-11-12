@@ -510,7 +510,18 @@ vec3 getColor(vec2 pos) {
 
 void main(void){
     vec2 pos = gl_FragCoord.xy / cellSize;
-    outColor = vec4(getColor(pos), 1.0);
+    vec2 posCenter = (gl_FragCoord.xy - canvasSize * 0.5) / cellSize;
+
+    vec2 mousePosFromCenter = mousePos - canvasSize * 0.5;
+    float chromaticAberration = length(mousePosFromCenter) * 0.00001;
+
+    float r = 1.0f + chromaticAberration;
+    vec3 color1 = getColor(posCenter / r + canvasSize * 0.5 / cellSize);
+    vec3 color2 = getColor(pos);
+    vec3 color3 = getColor(posCenter * r + canvasSize * 0.5 / cellSize);
+    outColor = vec4(color1.r, color2.g, color3.b, 1.0);
+
+    //outColor = vec4(getColor(pos), 1.0);
 }
 </script>
 
