@@ -32,12 +32,18 @@ void main() {
 <!-- Compute shader -->
 <script id="fs0" type="x-shader/x-fragment">#version 300 es
 precision highp float;
+
+// Parameters
+uniform ivec2 texSize;
 uniform float rho;
-out vec4 outColor;
+
+out vec4 outColor; // Output
+
 void main(void){
     ivec2 pos = ivec2(gl_FragCoord.xy);
     //if (pos.y == 0 || (pos.y == 1 && pos.x % 256 == 0)) {
-    if (pos.y == 0 && pos.x % 256 == 0) {
+    //if (pos.y == 0 && pos.x % 256 == 0) {
+    if (pos.x == texSize.x / 2 && pos.y == texSize.y / 2) {
         outColor = vec4(1.0, 0.0, 1.0, 0.0); // Crystal nucleus
     } else {
         outColor = vec4(0.0, 0.0, 0.0, rho);
@@ -224,6 +230,10 @@ precision highp float;
 
 // Parameters
 uniform ivec2 texSize;
+uniform ivec2 canvasSize;
+uniform float cellSize;
+uniform vec2 mousePos;
+uniform float rho;
 uniform float mu;
 uniform float gamma;
 uniform float sigma;
@@ -302,6 +312,22 @@ void main() {
         } else {
             next.w = (1.f - sigma) * next.w;
         }
+    }
+
+    // Mouse interaction
+    vec2 canvasPos;
+    canvasPos.y = float(pos.y) * sqrt(3.0f) / 2.0;
+    canvasPos.x = float(pos.x) + canvasPos.y * 0.5;
+    canvasPos *= cellSize;
+    if (canvasPos.x < 0.) {
+        canvasPos.x += float(canvasSize.x);
+    }
+    if (canvasPos.x > float(canvasSize.x)) {
+        canvasPos.x -= float(canvasSize.x);
+    }
+    if(distance(canvasPos, mousePos) < 100.) {
+    //if(distance(canvasPos, vec2(100., 100.)) < 100.) {
+        next = vec4(0.0, 0.0, 0.0, rho);
     }
 
     outColor = next;
@@ -460,7 +486,7 @@ void main(void){
 <script>
     // Parameters
     // Animation
-    const cellSize = 3;
+    const cellSize = 2;
     const subIteration = 20;
     // Color
     // const lightAngle = 0;
@@ -510,7 +536,7 @@ void main(void){
 
     // Texture size
     const texWidth = Math.ceil(width / cellSize);
-    const texHeight = Math.ceil(height / cellSize);
+    const texHeight = Math.ceil(height / cellSize * (2 / Math.sqrt(3)));
 
     console.log('Texture size: ', texHeight * texHeight);
 
@@ -519,6 +545,17 @@ void main(void){
     canvas.width = width;
     canvas.height = height;
     const gl = canvas.getContext('webgl2');
+
+    // Mouse position
+    let mouseX = 400;
+    let mouseY = 400;
+    canvas.addEventListener('mousemove', event => {
+        const bb = canvas.getBoundingClientRect();
+        const x = event.clientX - bb.left;
+        const y = bb.bottom - event.clientY;
+        mouseX = x;
+        mouseY = y;
+    });
 
     //--------------------------------
     // WebGL support functions
@@ -657,8 +694,12 @@ void main(void){
     const computeProgram4 = createProgram(gl, ['vs', 'fs4']);
     const computeProgLocs4 = {
         texSize: gl.getUniformLocation(computeProgram4, 'texSize'),
+        canvasSize: gl.getUniformLocation(computeProgram4, 'canvasSize'),
+        cellSize: gl.getUniformLocation(computeProgram4, 'cellSize'),
+        mousePos: gl.getUniformLocation(computeProgram4, 'mousePos'),
         time: gl.getUniformLocation(computeProgram4, 'time'),
         computeTex: gl.getUniformLocation(computeProgram4, 'computeTex'),
+        rho: gl.getUniformLocation(computeProgram4, 'rho'),
         mu: gl.getUniformLocation(computeProgram4, 'mu'),
         gamma: gl.getUniformLocation(computeProgram4, 'gamma'),
         sigma: gl.getUniformLocation(computeProgram4, 'sigma'),
@@ -760,8 +801,12 @@ void main(void){
                 gl.useProgram(computeProgram4);
                 gl.bindVertexArray(computeVA4);
                 gl.uniform2i(computeProgLocs4.texSize, texWidth, texHeight);
+                gl.uniform2i(computeProgLocs4.canvasSize, width, height);
+                gl.uniform1f(computeProgLocs4.cellSize, cellSize);
+                gl.uniform2f(computeProgLocs4.mousePos, mouseX, mouseY);
                 gl.uniform1f(computeProgLocs4.time, frameCounter);
                 gl.uniform1i(computeProgLocs4.computeTex, 0);
+                gl.uniform1f(computeProgLocs4.rho, rho);
                 gl.uniform1f(computeProgLocs4.mu, mu);
                 gl.uniform1f(computeProgLocs4.gamma, gamma);
                 gl.uniform1f(computeProgLocs4.sigma, sigma);
