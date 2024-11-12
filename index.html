@@ -591,6 +591,13 @@ void main(void){
         mouseX = x;
         mouseY = y;
     });
+    canvas.addEventListener('touchmove', event => {
+        const bb = canvas.getBoundingClientRect();
+        const x = event.touches[0].clientX - bb.left;
+        const y = bb.bottom - event.touches[0].clientY;
+        mouseX = x;
+        mouseY = y;
+    });
 
     //--------------------------------
     // WebGL support functions
