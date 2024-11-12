@@ -34,13 +34,12 @@ void main() {
 precision highp float;
 out vec4 outColor;
 void main(void){
-    ////if (gl_FragCoord.x < 100.) {
-    if (gl_FragCoord.x < 100. && gl_FragCoord.y < 100.) {
+    ivec2 pos = ivec2(gl_FragCoord.xy);
+    if (pos.y == 0 && pos.x % 2 == 0) {
         outColor = vec4(1.0, 0.0, 0.0, 1.0);
     } else {
         outColor = vec4(0.0, 1.0, 0.0, 1.0);
     }
-   // outColor = vec4(0.0, 1.0, 0.0, 1.0);
 }
 </script>
 
@@ -48,9 +47,10 @@ void main(void){
 <script id="fs" type="x-shader/x-fragment">#version 300 es
 precision highp float;
 uniform sampler2D computeTex; // Input
+uniform float cellSize;
 out vec4 outColor; //Output
 void main(void){
-    ivec2 pos = ivec2(gl_FragCoord.xy);
+    ivec2 pos = ivec2(gl_FragCoord.xy / cellSize);
     outColor = texelFetch(computeTex, pos, 0);
 }
 </script>
@@ -73,6 +73,8 @@ void main(void){
     // Texture size
     const texWidth = Math.ceil(width / cellSize);
     const texHeight = Math.ceil(height / cellSize);
+
+    console.log('Texture size: ', texHeight * texHeight);
 
     // Canvas
     const canvas = document.getElementById('main-canvas');
@@ -193,6 +195,7 @@ void main(void){
         // canvasSize: gl.getUniformLocation(drawProgram, 'canvasSize'),
         // computeRadius: gl.getUniformLocation(drawProgram, 'computeRadius'),
         computeTex: gl.getUniformLocation(drawProgram, 'computeTex'),
+        cellSize: gl.getUniformLocation(drawProgram, 'cellSize'),
         // rot: gl.getUniformLocation(drawProgram, 'rot'),
         // lightAngle: gl.getUniformLocation(drawProgram, 'lightAngle'),
         // lightIntensity: gl.getUniformLocation(drawProgram, 'lightIntensity'),
@@ -232,11 +235,12 @@ void main(void){
     // Draw
     gl.useProgram(drawProgram);
 
-    gl.uniform1i(drawProgLocs.computeTex, 0)
+    gl.uniform1i(drawProgLocs.computeTex, 0);
+    gl.uniform1f(drawProgLocs.cellSize, cellSize);
 
-    gl.bindTexture(gl.TEXTURE_2D, computeTex1) // Input
+    gl.bindTexture(gl.TEXTURE_2D, computeTex1); // Input
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null) // Output (canvas)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); // Output (canvas)
     gl.bindVertexArray(drawVA);
     gl.viewport(0, 0, width, height);
 
